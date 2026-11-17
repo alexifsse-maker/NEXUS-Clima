@@ -126,10 +126,11 @@
       <article class="card metric marine-metric"><label>TEMP. MAR</label><strong id="sea-temp">--</strong><small>Superfície do mar (°C)</small></article>
     </section>
 
+    <section class="card panel"><div class="section-head"><h3>Previsão offshore — 7 dias</h3><span>PCM-09 / PONTO SELECIONADO</span></div><p class="marine-note">Valores máximos previstos por dia. Swell ≤ 2,0 m e vento ≤ 20 nós são os limites informados, não uma autorização de operação.</p><div id="marine-daily" class="daily"><p class="marine-note">Aguardando previsão...</p></div></section>
     <section class="card panel"><div class="section-head"><h3>Próximas 48 horas no mar</h3><span>DE 3 EM 3 HORAS</span></div><div class="hourly" id="marine-hourly"></div></section>
   </section>
 
-  <section class="card" style="margin:12px 0"><p class="marine-note">Indicadores informativos de previsões modeladas. Estar abaixo dos limites de swell e vento não significa autorização ou garantia de segurança para operação offshore. Consulte os boletins oficiais, procedimentos da unidade e critérios operacionais aplicáveis.</p></section><footer><span>NEXUS · V1.3</span><span>Fonte: Open-Meteo Weather + Marine</span></footer>
+  <section class="card" style="margin:12px 0"><p class="marine-note">Indicadores informativos de previsões modeladas. Estar abaixo dos limites de swell e vento não significa autorização ou garantia de segurança para operação offshore. Consulte os boletins oficiais, procedimentos da unidade e critérios operacionais aplicáveis.</p></section><footer><span>NEXUS · V1.4</span><span>Fonte: Open-Meteo Weather + Marine</span></footer>
 </main>
 <script>
 'use strict';
@@ -158,7 +159,37 @@ function knots(kmh){return typeof kmh==='number'&&Number.isFinite(kmh)?kmh/1.852
 function bearing(v){if(!(typeof v==='number'&&isFinite(v)))return '--';const dirs=['N','NE','E','SE','S','SO','O','NO'];return dirs[Math.round(v/45)%8]+' ('+Math.round(v)+'°)'}
 function gaugeState(value,limit){if(!(typeof value==='number'&&Number.isFinite(value)))return {label:'Sem dados',cls:''}; if(value<=limit*0.85)return {label:'Dentro do limite informado',cls:'status-ok'}; if(value<=limit)return {label:'Próximo do limite informado',cls:'status-warn'}; return {label:'Acima do limite informado',cls:'status-bad'}}
 function renderGauge(prefix,value,limit,maxValue,unit){const pct=Number.isFinite(value)?Math.max(0,Math.min(100,(value/maxValue)*100)):0; const thresholdPct=Math.max(0,Math.min(100,(limit/maxValue)*100)); $(prefix+'-fill').style.width=pct+'%'; $(prefix+'-threshold').style.left='calc('+thresholdPct+'% - 2px)'; $(prefix+'-current').textContent='Atual: '+(Number.isFinite(value)?fmt(value,1)+' '+unit:'--'); const s=gaugeState(value,limit); const badge=$(prefix+'-status'); badge.textContent=s.label; badge.className='status-badge '+s.cls }
-async function updateMarine(point=marinePoint){if(!point)return;const id=++marineReq;marinePoint=point;localStorage.setItem('nexus-clima-marine-point',JSON.stringify(point));$('marine-lat').value=point.latitude;$('marine-lon').value=point.longitude;$('marine-status').textContent='Atualizando meteorologia marinha...';$('marine-refresh').disabled=true;try{const mu=new URL('https://marine-api.open-meteo.com/v1/marine');mu.search=new URLSearchParams({latitude:point.latitude,longitude:point.longitude,hourly:'wave_height,wave_direction,wave_period,swell_wave_height,swell_wave_period,ocean_current_velocity,sea_surface_temperature',forecast_hours:'48',timezone:'auto',cell_selection:'sea'});const wu=new URL('https://api.open-meteo.com/v1/forecast');wu.search=new URLSearchParams({latitude:point.latitude,longitude:point.longitude,current:'wind_speed_10m,wind_direction_10m',hourly:'wind_speed_10m',forecast_hours:'48',timezone:'auto'});const [mr,wr]=await Promise.all([fetch(mu),fetch(wu)]); if(!mr.ok||!wr.ok)throw Error('Falha de consulta'); const [md,wd]=await Promise.all([mr.json(),wr.json()]); if(id!==marineReq)return; if(!md.hourly?.time?.length||!wd.current)throw Error('Dados indisponíveis'); renderMarine(md,wd,point); lastMarineUpdate=Date.now(); $('marine-status').textContent='Meteorologia marinha atualizada.';}catch(e){console.error(e); if(id===marineReq)$('marine-status').textContent='⚠ Não foi possível atualizar a meteorologia marinha.';}finally{if(id===marineReq)$('marine-refresh').disabled=false}}
+async function updateMarine(point=marinePoint){if(!point)return;const id=++marineReq;marinePoint=point;localStorage.setItem('nexus-clima-marine-point',JSON.stringify(point));$('marine-lat').value=point.latitude;$('marine-lon').value=point.longitude;$('marine-status').textContent='Atualizando meteorologia marinha...';$('marine-refresh').disabled=true;try{const mu=new URL('https://marine-api.open-meteo.com/v1/marine');mu.search=new URLSearchParams({latitude:point.latitude,longitude:point.longitude,hourly:'wave_height,wave_direction,wave_period,swell_wave_height,swell_wave_period,ocean_current_velocity,sea_surface_temperature',forecast_days:'7',daily:'wave_height_max,swell_wave_height_max,swell_wave_period_max',timezone:'auto',cell_selection:'sea'});const wu=new URL('https://api.open-meteo.com/v1/forecast');wu.search=new URLSearchParams({latitude:point.latitude,longitude:point.longitude,current:'wind_speed_10m,wind_direction_10m',hourly:'wind_speed_10m',daily:'wind_speed_10m_max',forecast_days:'7',timezone:'auto'});const [mr,wr]=await Promise.all([fetch(mu),fetch(wu)]); if(!mr.ok||!wr.ok)throw Error('Falha de consulta'); const [md,wd]=await Promise.all([mr.json(),wr.json()]); if(id!==marineReq)return; if(!md.hourly?.time?.length||!wd.current)throw Error('Dados indisponíveis'); renderMarine(md,wd,point); renderMarineDaily(md,wd); lastMarineUpdate=Date.now(); $('marine-status').textContent='Meteorologia marinha atualizada.';}catch(e){console.error(e); if(id===marineReq)$('marine-status').textContent='⚠ Não foi possível atualizar a meteorologia marinha.';}finally{if(id===marineReq)$('marine-refresh').disabled=false}}
+
+function renderMarineDaily(md,wd){
+ const m=md.daily||{}, w=wd.daily||{};
+ const target=$('marine-daily');
+ if(!Array.isArray(m.time)||m.time.length===0){target.textContent='Previsão diária indisponível.';return;}
+ target.replaceChildren(...m.time.slice(0,7).map((date,i)=>{
+   const swell=m.swell_wave_height_max?.[i];
+   const wave=m.wave_height_max?.[i];
+   const wind=knots(w.wind_speed_10m_max?.[i]);
+   const thresholdOk=Number.isFinite(swell)&&Number.isFinite(wind);
+   const exceed=thresholdOk&&(swell>SWELL_LIMIT||wind>WIND_LIMIT);
+   const near=thresholdOk&&!exceed&&(swell>=SWELL_LIMIT*0.85||wind>=WIND_LIMIT*0.85);
+   const status=!thresholdOk?'Dados incompletos':exceed?'Acima do limite':near?'Próximo do limite':'Dentro dos limites';
+   const state=!thresholdOk?'':exceed?'status-bad':near?'status-warn':'status-ok';
+   const row=document.createElement('div');row.className='day';
+   row.style.flexWrap='wrap';
+   const label=document.createElement('span');label.style.flex='1 1 95px';
+   label.textContent=i===0?'Hoje':new Date(date+'T12:00:00').toLocaleDateString('pt-BR',{weekday:'short',day:'2-digit',month:'2-digit'});
+   const metrics=document.createElement('div');metrics.style.flex='3 1 230px';
+   metrics.style.display='grid';metrics.style.gridTemplateColumns='repeat(3,minmax(65px,1fr))';metrics.style.gap='8px';
+   for(const [name,value,unit] of [['🌊 Swell',swell,'m'],['💨 Vento',wind,'nós'],['〰️ Onda',wave,'m']]){
+     const item=document.createElement('div');const small=document.createElement('small');small.textContent=name;
+     const val=document.createElement('strong');val.style.display='block';val.style.marginTop='4px';val.textContent=Number.isFinite(value)?fmt(value,1)+' '+unit:'--';
+     item.append(small,val);metrics.appendChild(item);
+   }
+   const flag=document.createElement('strong');flag.className=state;flag.style.flex='1 1 105px';flag.style.fontSize='12px';flag.textContent=status;
+   row.append(label,metrics,flag);return row;
+ }));
+}
+
 function renderMarine(md,wd,point){const h=md.hourly||{}, wh=wd.hourly||{}, c=wd.current||{}; const i=0; const wave=h.wave_height?.[i], wavePeriod=h.wave_period?.[i], waveDir=h.wave_direction?.[i], swell=h.swell_wave_height?.[i], swellPeriod=h.swell_wave_period?.[i], current=h.ocean_current_velocity?.[i], seaTemp=h.sea_surface_temperature?.[i], windKt=knots(c.wind_speed_10m ?? wh.wind_speed_10m?.[i]); $('wave-height').textContent=isFinite(wave)?fmt(wave,1):'--'; $('wave-period').textContent=isFinite(wavePeriod)?fmt(wavePeriod,1):'--'; $('wave-direction').textContent=bearing(waveDir); $('swell-height').textContent=isFinite(swell)?fmt(swell,1):'--'; $('swell-period').textContent=isFinite(swellPeriod)?fmt(swellPeriod,1):'--'; $('wind-knots').textContent=isFinite(windKt)?fmt(windKt,1):'--'; $('current-velocity').textContent=isFinite(current)?fmt(current,2):'--'; $('sea-temp').textContent=isFinite(seaTemp)?fmt(seaTemp,1):'--'; renderGauge('swell',swell,SWELL_LIMIT,4,'m'); renderGauge('windk',windKt,WIND_LIMIT,30,'nós'); $('marine-hourly').replaceChildren(...(h.time||[]).map((t,idx)=>({t,idx})).filter(({idx})=>idx%3===0).slice(0,16).map(({t,idx})=>{const e=document.createElement('div'); e.className='hour'; const wkt=knots(wh.wind_speed_10m?.[idx]); e.innerHTML='<time></time><span class="emoji">🌊</span><strong></strong><small></small>'; e.children[0].textContent=t.slice(11,16); e.children[2].textContent=(isFinite(h.swell_wave_height?.[idx])?fmt(h.swell_wave_height[idx],1):'--')+'m'; e.children[3].textContent='💨 '+(isFinite(wkt)?fmt(wkt,1):'--')+' kt'; return e;})); const name=point.name?point.name+' · ':''; $('marine-status').textContent=name+'Lat '+fmt(point.latitude,4)+' / Lon '+fmt(point.longitude,4)+' · referência '+(wd.current?.time||h.time?.[0]||'').slice(11,16)}
 $('preset-pcm09').addEventListener('click',()=>updateMarine(PCM09));
 $('marine-form').addEventListener('submit',e=>{e.preventDefault(); const lat=Number($('marine-lat').value), lon=Number($('marine-lon').value); if(!isFinite(lat)||!isFinite(lon)||Math.abs(lat)>90||Math.abs(lon)>180){$('marine-status').textContent='Informe coordenadas válidas.'; return;} updateMarine({name:'Ponto marítimo',latitude:lat,longitude:lon})});
