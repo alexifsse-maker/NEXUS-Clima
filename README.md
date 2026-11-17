@@ -9,3 +9,6 @@ Dados e geocodificação: [Open-Meteo](https://open-meteo.com/). A API é consum
 
 ## Atualização automática (v1.1)
 O aplicativo consulta o clima a cada 30 minutos quando está visível, e sempre que retorna ao primeiro plano. Em segundo plano, não são feitas consultas periódicas. O botão de atualizar permanece disponível.
+
+## v1.2 — Offshore
+Aba Meteorologia Marinha com coordenadas independentes (latitude/longitude), altura significativa de ondas, período, direção, swell, correntes e temperatura superficial, mais 48 horas de previsão pela Open-Meteo Marine API. Atualização quando aberto, a cada 30 minutos enquanto visível e ao retornar. Não utilizar como fonte exclusiva para decisões operacionais ou segurança marítima.
