@@ -6,3 +6,6 @@ PWA de previsão do tempo em português, com estilo NEXUS Tesla, busca de cidade
 Ative GitHub Pages em Settings > Pages > Deploy from a branch > main > /(root). Abra o endereço HTTPS pelo Chrome Android e escolha Instalar app / Adicionar à tela inicial.
 
 Dados e geocodificação: [Open-Meteo](https://open-meteo.com/). A API é consumida ao vivo e exige Internet para atualizar a previsão.
+
+## Atualização automática (v1.1)
+O aplicativo consulta o clima a cada 30 minutos quando está visível, e sempre que retorna ao primeiro plano. Em segundo plano, não são feitas consultas periódicas. O botão de atualizar permanece disponível.
